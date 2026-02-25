@@ -56,6 +56,93 @@ def getInstituicaoByCodigo(codigo: str):
     return jsonify(instituicoes), 200
 
 
+@app.post("/instituicoesensino")
+def addInstituicao():
+    data = request.json
+
+    campos_obrigatorios = [
+        "codigo", "nome", "co_uf", "co_municipio",
+        "qt_mat_bas", "qt_mat_prof", "qt_mat_eja", "qt_mat_esp",
+        "qt_mat_fund", "qt_mat_inf", "qt_mat_med",
+        "qt_mat_zr_na", "qt_mat_zr_rur", "qt_mat_zr_urb"
+    ]
+
+    # Verifica campos faltando
+    for campo in campos_obrigatorios:
+        if campo not in data:
+            return jsonify({"erro": f"Campo obrigatório faltando: {campo}"}), 400
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO tb_instituicao
+            (codigo, nome, co_uf, co_municipio,
+             qt_mat_bas, qt_mat_prof, qt_mat_eja, qt_mat_esp,
+             qt_mat_fund, qt_mat_inf, qt_mat_med,
+             qt_mat_zr_na, qt_mat_zr_rur, qt_mat_zr_urb)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            data["codigo"], data["nome"], data["co_uf"], data["co_municipio"],
+            data["qt_mat_bas"], data["qt_mat_prof"], data["qt_mat_eja"], data["qt_mat_esp"],
+            data["qt_mat_fund"], data["qt_mat_inf"], data["qt_mat_med"],
+            data["qt_mat_zr_na"], data["qt_mat_zr_rur"], data["qt_mat_zr_urb"]
+        ))
+
+        conn.commit()
+        novo_id = cursor.lastrowid
+
+        return jsonify({"mensagem": "Instituição cadastrada", "id": novo_id}), 201
+
+    except Exception as e:
+        return jsonify({"erro": "Erro interno ao inserir."}), 500
+
+    finally:
+        conn.close()
+
+
+@app.put("/instituicoesensino/<codigo>")
+def updateInstituicao(codigo):
+    data = request.json
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM tb_instituicao WHERE codigo = ?", (codigo,))
+    linha = cursor.fetchone()
+
+    if linha is None:
+        conn.close()
+        return jsonify({"erro": "Instituição não encontrada"}), 404
+
+    try:
+        cursor.execute("""
+            UPDATE tb_instituicao SET
+                nome = ?, co_uf = ?, co_municipio = ?,
+                qt_mat_bas = ?, qt_mat_prof = ?, qt_mat_eja = ?, qt_mat_esp = ?,
+                qt_mat_fund = ?, qt_mat_inf = ?, qt_mat_med = ?,
+                qt_mat_zr_na = ?, qt_mat_zr_rur = ?, qt_mat_zr_urb = ?
+            WHERE codigo = ?
+        """, (
+            data.get("nome"), data.get("co_uf"), data.get("co_municipio"),
+            data.get("qt_mat_bas"), data.get("qt_mat_prof"), data.get("qt_mat_eja"), data.get("qt_mat_esp"),
+            data.get("qt_mat_fund"), data.get("qt_mat_inf"), data.get("qt_mat_med"),
+            data.get("qt_mat_zr_na"), data.get("qt_mat_zr_rur"), data.get("qt_mat_zr_urb"),
+            codigo
+        ))
+
+        conn.commit()
+
+        return jsonify({"mensagem": "Instituição atualizada"}), 200
+
+    except Exception as e:
+        return jsonify({"erro": "Erro interno ao atualizar"}), 500
+
+    finally:
+        conn.close()
+
+
 # === End Instituições ===
 if __name__ == '__main__':
     
